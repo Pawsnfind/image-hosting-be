@@ -2,16 +2,16 @@
 
 $config = parse_ini_file("../config.ini");
 
-$servername = $config['servername'];
-$username   = $config['username'];
-$password   = $config['password'];
+$server     = $config['server'];
+$username   = $config['db_user'];
+$password   = $config['db_password'];
 $database   = $config['database'];
 
 $conn = NULL;
 
 try 
 {
-    $conn = new PDO("mysql:host=$servername", $username, $password);
+    $conn = new PDO("mysql:host=$server", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     $sql = "CREATE DATABASE $database";
