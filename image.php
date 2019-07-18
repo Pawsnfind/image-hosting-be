@@ -1,19 +1,31 @@
  <?php
+
+include './helper.php';
+
 header('Content-Type: application/json; charset=utf-8');
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 
+$config = parse_ini_file("../config.ini");
+
+$server     = $config['server'];
+$username   = $config['db_user'];
+$password   = $config['db_password'];
+$database   = $config['database'];
+
+$user_id = NULL;
+
 if (!is_dir("images"))
     mkdir("images");
 
-if (!$_POST['token'])
+if (!$_POST['api_key'])
 {
     echo "No token";
     error(400, "No token");
     return;
 }
  
-if (ValidToken($_POST['token'])) 
+if (ValidToken($_POST['api_key'])) 
 { 
     $image_dir = "images/";
 
@@ -76,25 +88,30 @@ if (ValidToken($_POST['token']))
     error(500,  "Something went wrong");
 }
 
-function error($code, $message)
-{
-    http_response_code($code);
-
-    $error = array
-    (
-        'error' =>  $message
-    );
-
-    echo json_encode($error);
-}
-
 function ValidToken($token)
 {
-    $apiToken = parse_ini_file("config.ini");
+    $api_key == $config['api_key'];  // Will come from post later
 
-    if ($token == $apiToken['token']) {
-        return true;
-    } else {
+    if ($api_key) 
+    {
+        $conn = new PDO("mysql:host=$servername; dbname=$database", $username, $password);
+        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $sql = 'SELECT user.id FROM users WHERE api_key =  $api_key';
+
+        $query = $conn->exec($sql);
+
+        if ($query)
+        {
+            $user_id = $query[0];
+            
+            return true;
+        }
+        else
+            return false;    
+    } 
+    else 
+    {
         return false;
     }
 }
