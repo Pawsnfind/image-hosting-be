@@ -11,3 +11,15 @@ function error($code, $message)
 
     echo json_encode($error);
 }
+
+function response($code, $message)
+{
+    http_response_code($code);
+
+    $res = array
+    (
+        'response' =>  $message
+    );
+
+    echo json_encode($res);
+}

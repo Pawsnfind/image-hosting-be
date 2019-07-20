@@ -2,9 +2,7 @@
 
 include './helper.php';
 
-header('Content-Type: application/json; charset=utf-8');
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST");
+include './cors.php';
 
 $config = parse_ini_file("../config.ini");
 
