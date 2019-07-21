@@ -60,3 +60,6 @@ catch (PDOException $e)
 }
 
 $conn = NULL;
+
+echo 'Database created';
+ 

@@ -1,68 +1,49 @@
- <?php
+<?php
 
 include './helper.php';
-
 include './cors.php';
-
-$config = parse_ini_file("../config.ini");
-
-$server     = $config['server'];
-$username   = $config['db_user'];
-$password   = $config['db_password'];
-$database   = $config['database'];
-
-$user_id = NULL;
-
+ 
 if (!is_dir("images"))
     mkdir("images");
-
-if (!$_POST['api_key'])
-{
-    echo "No token";
-    error(400, "No token");
-    return;
-}
  
-if (ValidToken($_POST['api_key'])) 
+if (empty($_POST['api_key']))
+{
+    error(400, 'No api key');
+    exit();
+}
+$conn = new PDO("mysql:host=$servername; dbname=$database", $username, $password);
+$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$api_key = $_POST['api_key'];
+$sql = "SELECT * FROM users WHERE api_key = '$api_key' LIMIT 1";
+
+$query = $conn->prepare($sql);
+$query->execute();
+$results = $query->fetchAll();
+$user_id = $results[0][0];
+$acc_id  = $results[0][2];
+$conn = NULL;
+
+if (count($results) > 0) 
 { 
     $image_dir = "images/";
 
-    if (!$_POST['shelter_id'])
+    if (!is_dir($image_dir . md5($acc_id))) 
     {
-        echo "No shelter_id";
-        error(400, "No shelter_id");
-        return;
+        mkdir($image_dir . md5($acc_id));
     }
-
-    if (!$_POST['animal_id'])
-    {
-        echo "No animal_id";
-        error(400, "No animal_id");
-        return;
-    }
-
-    if (!is_dir($image_dir . $_POST['shelter_id'])) 
-    {
-        mkdir($image_dir . $_POST['shelter_id']);
-    }
-
-    if (!is_dir($image_dir . $_POST['shelter_id'] . '/'  . $_POST['animal_id'])) 
-    {
-        mkdir($image_dir . $_POST['shelter_id'] . '/' . $_POST['animal_id']);
-    }
-
-    $shelterID = $_POST['shelter_id'];
-    $animalID = $_POST['animal_id'];
 
     $date = new DateTime();
-
-    $filename = strval($date->getTimeStamp()) . strtolower(basename($_FILES["image"]["name"]));
-    $fileExt  = pathinfo($filename, PATHINFO_EXTENSION);
-
-    $target_file = $image_dir . $shelterID . '/' . $animalID . '/' . hash("sha256", $_POST['token'] . $filename) . '.' . $fileExt;
-
-    $imagePath = $target_file;
  
+    $filename = md5(strval($date->getTimeStamp()) . strtolower(basename($_FILES["image"]["name"])));
+    $fileExt  = pathinfo($_FILES["image"]["name"], PATHINFO_EXTENSION);
+  
+    $target_file = $image_dir . md5($acc_id) . '/' . hash("sha256", $_POST['api_key'] . $filename) . '.' . $fileExt;
+
+    if(!exif_imagetype($_FILES["image"]["tmp_name"])) {
+      error(400, 'File uploaded is not an image');
+      exit();
+    }
+
     if (file_exists($target_file)) 
     {
         error(400, 'Image already exists.  Try changing the image name');
@@ -71,45 +52,32 @@ if (ValidToken($_POST['api_key']))
  
     if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) 
     {
-        $imagePath = addslashes($imagePath);
+        $conn = new PDO("mysql:host=$servername; dbname=$database", $username, $password);
+        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      
+        $url = 'https://' . $_SERVER['SERVER_NAME'] . '/' . $target_file;
+        $sql = "INSERT INTO images (image_url, image_path, user_id) VALUES ('$url', '$target_file', '$user_id') ";
+        $results = $conn->exec($sql);
+    
 
+        $image_id = $conn->lastInsertId();
+        $conn = NULL;
         $message = array
         (
-            'url' =>  $imagePath
+            'url' =>  $url,
+            'image_id' => $image_id
         );
 
         http_response_code(200);
-        echo json_encode($message);
+        echo json_encode($message, JSON_UNESCAPED_SLASHES);
         return;
     } 
 
     error(500,  "Something went wrong");
+    exit();
 }
-
-function ValidToken($token)
-{
-    $api_key == $config['api_key'];  // Will come from post later
-
-    if ($api_key) 
-    {
-        $conn = new PDO("mysql:host=$servername; dbname=$database", $username, $password);
-        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        $sql = 'SELECT user.id FROM users WHERE api_key =  $api_key';
-
-        $query = $conn->exec($sql);
-
-        if ($query)
-        {
-            $user_id = $query[0];
-            
-            return true;
-        }
-        else
-            return false;    
-    } 
-    else 
-    {
-        return false;
-    }
+else{
+    error(400,  "Invalid API key");
+    exit();
 }
+  
