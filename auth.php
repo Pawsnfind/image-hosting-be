@@ -23,8 +23,6 @@ if (empty($authHeaders))
     exit();
 }
 
-$tokenInfo = NULL;
-
 try 
 {
     $config = [
